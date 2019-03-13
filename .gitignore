@@ -1,0 +1,16 @@
+# python
+*.py[cod]
+*.so
+*.egg
+*.egg-info
+dist
+build
+.idea/
+
+#java
+*.class
+
+#my
+venv/
+test.py
+
