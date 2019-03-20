@@ -14,6 +14,7 @@ import re
 from models.es_types import HouseType
 from elasticsearch_dsl.connections import connections
 
+
 # es = connections.create_connection(HouseType._doc_type.using)
 
 
@@ -136,14 +137,6 @@ class AnjukeItem(scrapy.Item):
         return insert_sql, params
 
 
-def handle_time(val):
-    import re
-    if val:
-        g = re.match('(\d{4}-\d{2}-\d{2})', val)
-        if g:
-            return g.group(1)
-
-
 class FangtianxiaItem(scrapy.Item):
     url_id = scrapy.Field()
     url = scrapy.Field()
@@ -153,7 +146,7 @@ class FangtianxiaItem(scrapy.Item):
     area = scrapy.Field(input_processor=MapCompose(filter_space))
     house_type = scrapy.Field(input_processor=MapCompose(filter_space))
     floor_area = scrapy.Field(input_processor=MapCompose(filter_unit))
-    sale_time = scrapy.Field(input_processor=MapCompose(filter_space, handle_time))
+    sale_time = scrapy.Field(input_processor=MapCompose(filter_space))
     crawl_time = scrapy.Field()
 
     def get_insert_sql(self):
@@ -166,4 +159,31 @@ class FangtianxiaItem(scrapy.Item):
             self['url_id'], self['url'], self['total_price'], self['unit_price'], self['floor_area'],
             self['house_type'],
             self['area'], self['community'], self['sale_time'], self['crawl_time'].strftime(SQL_DATETIME_FORMAT))
+        return insert_sql, params
+
+
+class JiayuanItem(scrapy.Item):
+    url_id = scrapy.Field()
+    url = scrapy.Field()
+    total_price = scrapy.Field()
+    floor_area = scrapy.Field()
+    unit_price = scrapy.Field()
+    intermediary = scrapy.Field()
+    area = scrapy.Field()
+    house_type = scrapy.Field(input_processor=MapCompose(filter_space))
+    sale_time = scrapy.Field()
+    crawl_time = scrapy.Field()
+
+    def get_insert_sql(self):
+        insert_sql = """
+            insert into jiayuan(url_id, url, total_price, unit_price, floor_area, 
+            house_type, area, intermediary, sale_time, crawl_time) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) 
+            on duplicate key update total_price=values(total_price),
+            unit_price=values(unit_price)
+        """
+        self['unit_price'] = float(self['total_price']) / float(self['floor_area']) * 10000
+        params = (
+            self['url_id'], self['url'], self['total_price'], self['unit_price'], self['floor_area'],
+            self['house_type'],
+            self['area'], self['intermediary'], self['sale_time'], self['crawl_time'].strftime(SQL_DATETIME_FORMAT))
         return insert_sql, params

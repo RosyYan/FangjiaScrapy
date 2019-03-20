@@ -157,17 +157,88 @@ class RandomProxyMiddleware(object):
 
 
 from scrapy.http import HtmlResponse
+from scrapy.selector import Selector
+from PIL import Image, ImageEnhance
+import pytesseract
 
 
 class JSPageMiddleware(object):
-    # 通过chrome请求动态网页
     def process_request(self, request, spider):
+        # 通过chrome访问安居客
         if spider.name == 'anjuke':
             spider.browser.get(request.url)
-            import time
-            time.sleep(1)
-            print('request:{0}'.format(request.url))
-            # print(spider.browser.page_source)
+            spider.browser.implicitly_wait(1)
+            print('安居客:{0}'.format(request.url))
             # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
             return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
                                 request=request)
+
+        # 解决阳光家缘、房天下的验证码识别问题
+        elif spider.name == 'jiayuan':
+            screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/jiayuan_captcha.png'
+            spider.browser.get(request.url)
+            spider.browser.implicitly_wait(5)
+            print('阳光家缘:{0}'.format(request.url))
+            selector = Selector(text=spider.browser.page_source)
+            #  handle the error or invalid verification code
+            err_text = selector.css(".MS dd li::text").extract_first()
+            #  handle the normal page
+            normal_text = selector.css("div.resultList")
+            if not err_text:
+                if normal_text:
+                    return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source,
+                                        encoding='utf-8', request=request)
+                self.jiayuan_handler(spider.browser, screenImg)
+            while err_text and '验证码错误' in err_text:
+                spider.browser.find_element_by_css_selector("a#LnkReturnUrl").click()
+                spider.browser.implicitly_wait(3)
+                self.jiayuan_handler(spider.browser, screenImg)
+                selector = Selector(text=spider.browser.page_source)
+                err_text = selector.css(".MS dd li::text").extract_first()
+                if not err_text:
+                    break
+
+            # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
+            return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
+                                request=request)
+
+        elif spider.name == 'fangtianxia':
+            screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/fang_captcha.png'
+            spider.browser.get(request.url)
+            spider.browser.implicitly_wait(10)
+            print('房天下：%s' % request.url)
+            selector = Selector(text=spider.browser.page_source)
+            verify_info = selector.css('div.verify_info')
+            while verify_info:
+                print('验证码问题...')
+                spider.browser.save_screenshot(screenImg)
+                img = Image.open(screenImg).crop(())
+                img = img.convert('L')
+                img = ImageEnhance.Contrast(img).enhance(2.0)
+                img.save(screenImg)
+                code = pytesseract.image_to_string(img)
+                spider.browser.find_element_by_css_selector("input#code").send_keys(code)
+                spider.browser.find_element_by_xpath(
+                    '//div[@id="verify_page"]//form/div[@class="button"]/input').click()
+                spider.browser.implicitly_wait(3)
+                selector = Selector(text=spider.browser.page_source)
+                verify_info = selector.css('div.verify_info')
+                if not verify_info:
+                    break
+            return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
+                                request=request)
+
+    def jiayuan_handler(self, browser, img_src):
+        browser.execute_script(
+            'window.scrollTo(0,document.body.scrollHeight); var lenOfPage = document.body.scrollHeight; return lenOfPage;')
+        # 滑动到底部后截屏
+        browser.save_screenshot(img_src)
+        img = Image.open(img_src).crop((683, 366, 753, 386))
+        img = img.convert('L')
+        img = ImageEnhance.Contrast(img).enhance(2.0)
+        img.save(img_src)
+        img = Image.open(img_src)
+        code = pytesseract.image_to_string(img)
+        browser.find_element_by_id('ValidateCode').send_keys(code)
+        browser.find_element_by_css_selector('input.submit').click()
+        browser.implicitly_wait(3)

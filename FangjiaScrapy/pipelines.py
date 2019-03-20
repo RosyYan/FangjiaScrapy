@@ -37,10 +37,9 @@ class MysqlTwistedPipline(object):
         return cls(dbpool)
 
     def process_item(self, item, spider):
-        if item['area'] and item['area'] != "广州周边":
-            # 使用twisted将mysql插入变成异步执行
-            query = self.dbpool.runInteraction(self.do_insert, item)
-            query.addErrback(self.handle_error, item, spider)  # 处理异常
+        # 使用twisted将mysql插入变成异步执行
+        query = self.dbpool.runInteraction(self.do_insert, item)
+        query.addErrback(self.handle_error, item, spider)  # 处理异常
 
     def handle_error(self, failure, item, spider):
         # 处理异步插入的异常
