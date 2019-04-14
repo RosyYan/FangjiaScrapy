@@ -17,7 +17,7 @@ class JiayuanSpider(scrapy.Spider):
     allowed_domains = ["www.gzcc.gov.cn"]  # 允许的域名
     start_urls = ["http://www.gzcc.gov.cn/data/QueryService/Query.aspx?QueryID=26"]  # 入口urls
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
         super(JiayuanSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
@@ -33,6 +33,7 @@ class JiayuanSpider(scrapy.Spider):
             self.crawler.stats.inc_value("failed_url")
 
         # each page
+        print("debug jiayuan:"+response.url)
         sell_nodes = response.css("table.resultTable tbody tr")
         for sell_node in sell_nodes[1:]:
             house_item = JiayuanItem()

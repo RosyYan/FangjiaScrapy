@@ -17,7 +17,7 @@ class FangtianxiaSpider(scrapy.Spider):
     allowed_domains = ["gz.esf.fang.com"]  # 允许的域名
     start_urls = ["https://gz.esf.fang.com/"]  # 入口urls
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
         super(FangtianxiaSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)

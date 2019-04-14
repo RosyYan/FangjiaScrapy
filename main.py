@@ -15,8 +15,8 @@ if __name__ == '__main__':
     """
 
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    # execute(['scrapy', 'crawl', 'lianjia'])
-    execute(['scrapy', 'crawl', 'fangtianxia'])
+    execute(['scrapy', 'crawl', 'lianjia'])
+    # execute(['scmrapy', 'crawl', 'fangtianxia'])
     # execute(['scrapy', 'crawl', 'anjuke'])
     # execute(['scrapy', 'crawl', 'jiayuan'])
 

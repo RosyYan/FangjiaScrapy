@@ -17,7 +17,7 @@ class AnjukeSpider(scrapy.Spider):
     allowed_domains = ["guangzhou.anjuke.com"]  # 允许的域名
     start_urls = ["https://guangzhou.anjuke.com/sale/?from=navigation"]  # 入口urls
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
         super(AnjukeSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)

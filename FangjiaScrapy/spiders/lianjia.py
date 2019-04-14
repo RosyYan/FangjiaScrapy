@@ -11,6 +11,9 @@ import re
 
 from FangjiaScrapy.utils.common import get_md5
 from datetime import datetime
+from selenium import webdriver
+from scrapy.xlib.pydispatch import dispatcher
+from scrapy import signals
 
 
 class LianjiaSpider(scrapy.Spider):
@@ -18,30 +21,38 @@ class LianjiaSpider(scrapy.Spider):
     allowed_domains = ["gz.lianjia.com"]  # 允许的域名
     start_urls = ["https://gz.lianjia.com/ershoufang/"]  # 入口urls
 
+    def __init__(self, **kwargs):
+        self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
+        super(LianjiaSpider, self).__init__()
+        dispatcher.connect(self.spider_closed, signals.spider_closed)
 
+    def spider_closed(self, spider):
+        # 当爬虫退出的时候关闭chrome
+        print("spider closed")
+        self.browser.quit()
 
     # 默认的解析方法
     def parse(self, response):
         if response.status == 404:
             self.fail_urls.append(response.url)
             self.crawler.stats.inc_value("failed_url")
+        try:
+            page_no = eval(response.css('.page-box.house-lst-page-box::attr(page-data)').extract_first(
+                ""))  # {'totalPage': 100, 'curPage': 1}
+            max_page = page_no.get('totalPage', '')
+        except:
+            max_page = 1
+        for page in range(1, max_page):
+            next_url = '/ershoufang/pg' + str(page)
+            yield scrapy.Request(url=parse.urljoin(response.url, next_url), callback=self.parse_info)
 
+    def parse_info(self, response):
         sell_nodes = response.css('.sellListContent .LOGCLICKDATA a')
         for sell_node in sell_nodes:
             sell_url = sell_node.css('::attr(href)').extract_first('')
             if re.match('https://gz.lianjia.com/ershoufang/\d+.html', sell_url):
                 yield Request(url=parse.urljoin(response.url, sell_url), meta={"sell_url": sell_url},
                               callback=self.parse_detail)
-
-        # get next_page url
-        page_url = response.css('.page-box.house-lst-page-box::attr(page-url)').extract_first(
-            "")  # '/ershoufang/pg{page}/'
-        page_no = eval(response.css('.page-box.house-lst-page-box::attr(page-data)').extract_first(
-            ""))  # {'totalPage': 100, 'curPage': 1}
-        cur_page = page_no.get('curPage', '')
-        next_url = page_url[:-7] + str(cur_page + 1)
-        if cur_page < page_no.get('totalPage', ''):
-            yield scrapy.Request(url=parse.urljoin(response.url, next_url), callback=self.parse)
 
     def parse_detail(self, response):
 
@@ -51,7 +62,6 @@ class LianjiaSpider(scrapy.Spider):
         item_loader = HouseItemLoader(item=LianjiaItem(), response=response)
         item_loader.add_value("url_id", get_md5(response.url))  # url为主键
         item_loader.add_value("url", response.url)
-        print("链家URL:" + response.url)
         item_loader.add_css('total_price', 'span.total::text')  # 总价
         item_loader.add_css('unit_price', 'span.unitPriceValue::text')  # 单价
         item_loader.add_css('community', '.communityName .info::text')  # 小区名

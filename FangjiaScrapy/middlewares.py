@@ -172,61 +172,75 @@ class JSPageMiddleware(object):
             # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
             return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
                                 request=request)
-
-        # 解决阳光家缘、房天下的验证码识别问题
-        elif spider.name == 'jiayuan':
-            screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/jiayuan_captcha.png'
+        elif spider.name == 'lianjia':
             spider.browser.get(request.url)
-            spider.browser.implicitly_wait(5)
-            print('阳光家缘:{0}'.format(request.url))
-            selector = Selector(text=spider.browser.page_source)
-            #  handle the error or invalid verification code
-            err_text = selector.css(".MS dd li::text").extract_first()
-            #  handle the normal page
-            normal_text = selector.css("div.resultList")
-            if not err_text:
-                if normal_text:
-                    return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source,
-                                        encoding='utf-8', request=request)
-                self.jiayuan_handler(spider.browser, screenImg)
-            while err_text and '验证码错误' in err_text:
-                spider.browser.find_element_by_css_selector("a#LnkReturnUrl").click()
-                spider.browser.implicitly_wait(3)
-                self.jiayuan_handler(spider.browser, screenImg)
-                selector = Selector(text=spider.browser.page_source)
-                err_text = selector.css(".MS dd li::text").extract_first()
-                if not err_text:
-                    break
-
+            spider.browser.implicitly_wait(2)
+            print('链家:{0}'.format(request.url))
             # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
             return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
                                 request=request)
 
+        # 解决阳光家缘、房天下的验证码识别问题
+        elif spider.name == 'jiayuan':
+            self.handle_jiayuan(request, spider)
+
         elif spider.name == 'fangtianxia':
-            screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/fang_captcha.png'
-            spider.browser.get(request.url)
-            spider.browser.implicitly_wait(10)
-            print('房天下：%s' % request.url)
+            self.handle_fang(request, spider)
+
+    def handle_fang(self,request, spider):
+        screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/fang_captcha.png'
+        spider.browser.get(request.url)
+        spider.browser.implicitly_wait(10)
+        print('房天下：%s' % request.url)
+        selector = Selector(text=spider.browser.page_source)
+        verify_info = selector.css('div.verify_info')
+        while verify_info:
+            print('验证码问题...')
+            spider.browser.save_screenshot(screenImg)
+            img = Image.open(screenImg).crop(())
+            img = img.convert('L')
+            img = ImageEnhance.Contrast(img).enhance(2.0)
+            img.save(screenImg)
+            code = pytesseract.image_to_string(img)
+            spider.browser.find_element_by_css_selector("input#code").send_keys(code)
+            spider.browser.find_element_by_xpath(
+                '//div[@id="verify_page"]//form/div[@class="button"]/input').click()
+            spider.browser.implicitly_wait(3)
             selector = Selector(text=spider.browser.page_source)
             verify_info = selector.css('div.verify_info')
-            while verify_info:
-                print('验证码问题...')
-                spider.browser.save_screenshot(screenImg)
-                img = Image.open(screenImg).crop(())
-                img = img.convert('L')
-                img = ImageEnhance.Contrast(img).enhance(2.0)
-                img.save(screenImg)
-                code = pytesseract.image_to_string(img)
-                spider.browser.find_element_by_css_selector("input#code").send_keys(code)
-                spider.browser.find_element_by_xpath(
-                    '//div[@id="verify_page"]//form/div[@class="button"]/input').click()
-                spider.browser.implicitly_wait(3)
-                selector = Selector(text=spider.browser.page_source)
-                verify_info = selector.css('div.verify_info')
-                if not verify_info:
-                    break
-            return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
-                                request=request)
+            if not verify_info:
+                break
+        return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
+                            request=request)
+
+    def handle_jiayuan(self, request, spider):
+        screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/jiayuan_captcha.png'
+        spider.browser.get(request.url)
+        spider.browser.implicitly_wait(5)
+        print('阳光家缘:{0}'.format(request.url))
+        selector = Selector(text=spider.browser.page_source)
+        #  handle the error or invalid verification code
+        err_text = selector.css(".MS dd li::text").extract_first()
+        #  handle the normal page
+        normal_text = selector.css("div.resultList")
+        if not err_text:
+            if normal_text:
+                spider.browser.implicitly_wait(2)
+                return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source,
+                                    encoding='utf-8', request=request)
+            self.jiayuan_handler(spider.browser, screenImg)
+        while err_text and '验证码错误' in err_text:
+            spider.browser.find_element_by_css_selector("a#LnkReturnUrl").click()
+            spider.browser.implicitly_wait(3)
+            self.jiayuan_handler(spider.browser, screenImg)
+            selector = Selector(text=spider.browser.page_source)
+            err_text = selector.css(".MS dd li::text").extract_first()
+            if not err_text:
+                break
+
+        # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
+        return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
+                            request=request)
 
     def jiayuan_handler(self, browser, img_src):
         browser.execute_script(
