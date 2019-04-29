@@ -182,12 +182,12 @@ class JSPageMiddleware(object):
 
         # 解决阳光家缘、房天下的验证码识别问题
         elif spider.name == 'jiayuan':
-            self.handle_jiayuan(request, spider)
+            return self.handle_jiayuan(request, spider)
 
         elif spider.name == 'fangtianxia':
-            self.handle_fang(request, spider)
+            return self.handle_fang(request, spider)
 
-    def handle_fang(self,request, spider):
+    def handle_fang(self, request, spider):
         screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/fang_captcha.png'
         spider.browser.get(request.url)
         spider.browser.implicitly_wait(10)
@@ -216,7 +216,7 @@ class JSPageMiddleware(object):
     def handle_jiayuan(self, request, spider):
         screenImg = 'F:/FangjiaScrapy/FangjiaScrapy/utils/images/jiayuan_captcha.png'
         spider.browser.get(request.url)
-        spider.browser.implicitly_wait(5)
+        spider.browser.implicitly_wait(2)
         print('阳光家缘:{0}'.format(request.url))
         selector = Selector(text=spider.browser.page_source)
         #  handle the error or invalid verification code
@@ -239,6 +239,7 @@ class JSPageMiddleware(object):
                 break
 
         # 防止重复请求:scrapy直接返回给spider,不会发送给Downloader
+        # print(spider.browser.current_url)
         return HtmlResponse(url=spider.browser.current_url, body=spider.browser.page_source, encoding='utf-8',
                             request=request)
 

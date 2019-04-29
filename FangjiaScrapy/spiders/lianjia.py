@@ -14,6 +14,7 @@ from datetime import datetime
 from selenium import webdriver
 from scrapy.xlib.pydispatch import dispatcher
 from scrapy import signals
+import os
 
 
 class LianjiaSpider(scrapy.Spider):
@@ -22,7 +23,9 @@ class LianjiaSpider(scrapy.Spider):
     start_urls = ["https://gz.lianjia.com/ershoufang/"]  # 入口urls
 
     def __init__(self, **kwargs):
-        self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, 'tools\\chromedriver.exe')
+        self.browser = webdriver.Chrome(executable_path=path)
         super(LianjiaSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
 

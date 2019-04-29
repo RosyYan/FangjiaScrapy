@@ -10,6 +10,8 @@ import scrapy
 from selenium import webdriver
 from scrapy.xlib.pydispatch import dispatcher
 from scrapy import signals
+import re
+import os
 
 
 class JiayuanSpider(scrapy.Spider):
@@ -18,7 +20,9 @@ class JiayuanSpider(scrapy.Spider):
     start_urls = ["http://www.gzcc.gov.cn/data/QueryService/Query.aspx?QueryID=26"]  # 入口urls
 
     def __init__(self, **kwargs):
-        self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, 'tools\\chromedriver.exe')
+        self.browser = webdriver.Chrome(executable_path=path)
         super(JiayuanSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
 
@@ -32,8 +36,24 @@ class JiayuanSpider(scrapy.Spider):
             self.fail_urls.append(response.url)
             self.crawler.stats.inc_value("failed_url")
 
+        print('Into parse:'+response.url)
+        # print(response.text)
+        head_url = response.url
+        # next_page
+        page_info = response.css("span.disabled::text").extract_first()
+        print(page_info)
+        if page_info:
+            pages = page_info.split('/')[1]
+            pages = re.findall('\d+', pages)[0]  # 总页数
+
+            for i in range(1, int(pages)+1):
+                next_url = response.urljoin(head_url+'&page='+str(i))
+                print(next_url)
+                yield scrapy.Request(url=response.urljoin(next_url), callback=self.parse_info)
+
+    def parse_info(self, response):
         # each page
-        print("debug jiayuan:"+response.url)
+        print("debug jiayuan:" + response.url)
         sell_nodes = response.css("table.resultTable tbody tr")
         for sell_node in sell_nodes[1:]:
             house_item = JiayuanItem()
@@ -49,11 +69,3 @@ class JiayuanSpider(scrapy.Spider):
             item_loader.add_value('crawl_time', datetime.now())
             house_item = item_loader.load_item()
             yield house_item
-
-        # next_page
-        page_info = response.css("span.disabled::text").extract_first()
-        pages = page_info[page_info.index('/') + 2:len(page_info) - 1]  # 总页数
-        cur_page = response.css("span.current::text").extract_first()
-        if int(cur_page) < int(pages):
-            next_url = response.urljoin(response.css("span.current + a::attr(href)").extract_first())
-            yield scrapy.Request(url=next_url, callback=self.parse)

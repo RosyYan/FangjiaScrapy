@@ -10,6 +10,7 @@ from FangjiaScrapy.items import FangtianxiaItem, HouseItemLoader
 from utils.common import get_md5
 from datetime import datetime
 from scrapy.xlib.pydispatch import dispatcher
+import os
 
 
 class FangtianxiaSpider(scrapy.Spider):
@@ -18,7 +19,9 @@ class FangtianxiaSpider(scrapy.Spider):
     start_urls = ["https://gz.esf.fang.com/"]  # 入口urls
 
     def __init__(self, **kwargs):
-        self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, 'tools\\chromedriver.exe')
+        self.browser = webdriver.Chrome(executable_path=path)
         super(FangtianxiaSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
 

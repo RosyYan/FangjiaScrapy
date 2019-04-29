@@ -11,14 +11,8 @@ from scrapy.loader import ItemLoader
 from scrapy.loader.processors import MapCompose, TakeFirst
 from settings import SQL_DATETIME_FORMAT
 import re
-from models.es_types import HouseType
-from elasticsearch_dsl.connections import connections
 
 
-# es = connections.create_connection(HouseType._doc_type.using)
-
-
-# 自定义ItemLoader
 class HouseItemLoader(ItemLoader):
     # 自定义itemloader
     default_output_processor = TakeFirst()
@@ -51,24 +45,6 @@ def filter_space(val):
         return ''.join(value)
 
 
-def gen_suggests(index, info_tuple):
-    # 根据字符串生成搜索建议数组
-    used_words = set()
-    suggests = []
-    for text, weight in info_tuple:
-        if text:
-            # 调用es的analyzer接口分析info_tuple
-            words = es.indices.analyze(index=index, analyzer='ik_max_word', params={'filter': ['lowercase']}, body=text)
-            analyzed_words = set(r['token'] for r in words['tokens'] if len(r['token'] > 1))
-            new_words = analyzed_words - used_words
-        else:
-            new_words = set()
-        if new_words:
-            # 格式
-            suggests.append({"input": list(new_words), "weight": weight})
-    return suggests
-
-
 class LianjiaItem(scrapy.Item):
     url_id = scrapy.Field()
     url = scrapy.Field()
@@ -93,22 +69,6 @@ class LianjiaItem(scrapy.Item):
             self['house_type'],
             self['area'], self['community'], self['sale_time'], self['crawl_time'].strftime(SQL_DATETIME_FORMAT))
         return insert_sql, params
-
-    def save_to_es(self):
-        house = HouseType()
-        house.url_id = self["url_id"]
-        house.url = self["url"]
-        house.total_price = self["total_price"]
-        house.unit_price = self["unit_price"]
-        house.community = self["community"]
-        house.area = self["area"]
-        house.house_type = self["house_type"]
-        house.floor_area = self["floor_area"]
-        house.sale_time = self["sale_time"]
-        house.suggest = gen_suggests(HouseType._doc_type.index, (house.community, 10), (house.area, 8),
-                                     (house.house_type, 7))
-
-        house.save()
 
 
 class AnjukeItem(scrapy.Item):

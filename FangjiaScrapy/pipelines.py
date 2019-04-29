@@ -49,7 +49,8 @@ class MysqlTwistedPipline(object):
         # 执行具体的插入
         # 根据不同的item 构建不同的sql语句并插入到mysql中
         insert_sql, params = item.get_insert_sql()
-        cursor.execute(insert_sql, params)
+        if insert_sql and params:
+            cursor.execute(insert_sql, params)
 
 
 """

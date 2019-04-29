@@ -10,7 +10,7 @@ from utils.common import get_md5
 from selenium import webdriver
 from scrapy.xlib.pydispatch import dispatcher
 from scrapy import signals
-
+import os
 
 class AnjukeSpider(scrapy.Spider):
     name = "anjuke"  # 爬虫名
@@ -18,7 +18,9 @@ class AnjukeSpider(scrapy.Spider):
     start_urls = ["https://guangzhou.anjuke.com/sale/?from=navigation"]  # 入口urls
 
     def __init__(self, **kwargs):
-        self.browser = webdriver.Chrome(executable_path='F:/Download/selenium/chromedriver.exe')
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        path = os.path.join(root, 'tools\\chromedriver.exe')
+        self.browser = webdriver.Chrome(executable_path=path)
         super(AnjukeSpider, self).__init__()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
 
