@@ -154,7 +154,7 @@ class DataAnalysis(object):
             pie = Pie('各区二手房在售数量', names[t], title_pos='center', width=900)
             pie.add("数量", areas, nums, radius=[30, 60], label_text_color=None, is_label_show=True,
                     legend_orient='vertical', legend_pos='left')
-            pie.render(path='graphs/pies/' + names[t] + '.html')
+            pie.render(path='graphs/pies/nums/' + names[t] + '.html')
 
     def draw_avg(self):
         """
